@@ -18,11 +18,11 @@ This is the working draft of the Farm Management System. It contains all develop
 ### Steps
 1. Open VS Code and go to **File > Open Folder** and open the folder containing this file
 2. Make sure `farm_data.csv` is in the same folder
-3. Open `JavaCode_GroupProject_02_WORKING_KandulaAryan.java`
+3. Open `JavaCode_GroupProject_02_WORKING.java`
 4. Click the **Run** button at the top right, OR run in the terminal:
    ```
-   javac JavaCode_GroupProject_02_WORKING_KandulaAryan.java
-   java JavaCode_GroupProject_02_WORKING_KandulaAryan
+   javac JavaCode_GroupProject_02_WORKING.java
+   java JavaCode_GroupProject_02_WORKING
    ```
 
 ---
@@ -43,7 +43,7 @@ This is the working draft of the Farm Management System. It contains all develop
 
 | Class | Purpose |
 |---|---|
-| `JavaCode_GroupProject_02_WORKING_KandulaAryan` | Main class, all menus, program entry point |
+| `JavaCode_GroupProject_02_WORKING` | Main class, all menus, program entry point |
 | `StoreItem` | Represents a store product (name, price, quantity) |
 | `Animal` | Represents a farm/breeder animal for sale |
 | `ServiceRecord` | Represents a scheduled service and payment status |
@@ -58,8 +58,8 @@ This is the working draft of the Farm Management System. It contains all develop
 
 | File | Description |
 |---|---|
-| `JavaCode_GroupProject_02_WORKING_KandulaAryan.java` | This file — working draft |
-| `JavaCode_GroupProject_02_POLISHED_KandulaAryan.java` | Polished final version |
+| `JavaCode_GroupProject_02_WORKING.java` | This file — working draft |
+| `JavaCode_GroupProject_02_POLISHED.java` | Polished final version |
 | `farm_data.csv` | Data file — inventory, animals, and services load from here |
 | `AI_GroupProject_02_KandulaAryan.md` | AI prompts used when consulting AI tools |
 
