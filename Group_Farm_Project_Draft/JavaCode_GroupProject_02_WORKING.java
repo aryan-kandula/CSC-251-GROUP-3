@@ -8,7 +8,7 @@ import java.util.Scanner;
 
 /**
  * Farm Management System
- * Group 3
+ * Group 2
  * Modules 2 & 3 Group Project
  *
  * Manages store inventory, animal sales, veterinary services,
@@ -55,9 +55,9 @@ class StoreItem {
     public int    getQuantity()      { return quantity; }
     public void   setQuantity(int q) { quantity = q; }
 
-    // Returns a CSV-formatted line for this item
+    // Returns a CSV-formatted line for this item (commas stripped to prevent CSV corruption)
     public String toCSV() {
-        return "STORE,item," + name + "," + price + "," + quantity + ",,";
+        return "STORE,item," + name.replace(",","") + "," + price + "," + quantity + ",,,";
     }
 
     @Override
@@ -87,9 +87,9 @@ class Animal {
     public void    markSold()     { sold = true; }
     public void    setSold(boolean s) { sold = s; }
 
-    // Returns a CSV-formatted line for this animal
+    // Returns a CSV-formatted line for this animal (commas stripped to prevent CSV corruption)
     public String toCSV() {
-        return "ANIMAL,animal," + type + "," + breed + "," + salePrice + "," + source + "," + sold;
+        return "ANIMAL,animal," + type.replace(",","") + "," + breed.replace(",","") + "," + salePrice + "," + source.replace(",","") + "," + sold + ",";
     }
 
     @Override
@@ -119,10 +119,10 @@ class ServiceRecord {
     public void    markPaid()        { paid = true; }
     public void    setPaid(boolean p) { paid = p; }
 
-    // Returns a CSV-formatted line for this service record
+    // Returns a CSV-formatted line for this service record (commas stripped to prevent CSV corruption)
     public String toCSV() {
-        return "SERVICE,record," + customerName + "," + animalType + "," +
-               serviceType + "," + fee + "," + date + "," + paid;
+        return "SERVICE,record," + customerName.replace(",","") + "," + animalType.replace(",","") + "," +
+               serviceType.replace(",","") + "," + fee + "," + date + "," + paid;
     }
 
     @Override
@@ -529,6 +529,10 @@ public class JavaCode_GroupProject_02_WORKING {
         revenue = 0.0;
 
         try (Scanner sc = new Scanner(file)) {
+            if (!sc.hasNextLine()) {
+                FarmDialog.message("File Error", "farm_data.csv is empty.\nLoading default data instead.");
+                return false;
+            }
             sc.nextLine(); // skip header row
             while (sc.hasNextLine()) {
                 String line = sc.nextLine().trim();
@@ -562,7 +566,7 @@ public class JavaCode_GroupProject_02_WORKING {
     // Written by: Aryan Kandula - Saves all current inventory, animals, and service records to CSV.
     static void saveToCSV() {
         try (PrintWriter pw = new PrintWriter(new FileWriter(CSV_FILE))) {
-            pw.println("TYPE,CATEGORY,FIELD1,FIELD2,FIELD3,FIELD4,FIELD5");
+            pw.println("TYPE,CATEGORY,FIELD1,FIELD2,FIELD3,FIELD4,FIELD5,FIELD6");
             for (StoreItem  i  : inventory) pw.println(i.toCSV());
             for (Animal     a  : animals)   pw.println(a.toCSV());
             for (ServiceRecord sr : services) pw.println(sr.toCSV());
@@ -603,7 +607,7 @@ public class JavaCode_GroupProject_02_WORKING {
 
         card.add(label("~ Farm Management ~",    new Font("Georgia", Font.ITALIC, 16), new Color(255, 240, 180)), c);
         card.add(label("Farm Management System", new Font("Georgia", Font.BOLD,   21), Color.WHITE), c);
-        card.add(label("Group 3",                new Font("Georgia", Font.ITALIC, 13), new Color(255, 240, 180)), c);
+        card.add(label("Group 2",                new Font("Georgia", Font.ITALIC, 13), new Color(255, 240, 180)), c);
 
         FarmButton enter = new FarmButton("  Enter Farm  ", FarmTheme.BARN_RED);
         enter.setPreferredSize(new Dimension(180, 44));
@@ -637,7 +641,7 @@ public class JavaCode_GroupProject_02_WORKING {
             else if (c == 4) saveToCSV();
             else {
                 FarmDialog.message("Goodbye",
-                    "Thank you for using\nFarm Management System!\n\nHave a wonderful day!\n- Group 3");
+                    "Thank you for using\nFarm Management System!\n\nHave a wonderful day!\n- Group 2");
                 return;
             }
         }
@@ -891,7 +895,7 @@ public class JavaCode_GroupProject_02_WORKING {
         FarmDialog.message("Business Report",
             "================================================\n" +
             "           FARM BUSINESS REPORT                \n" +
-            "                   Group 3                      \n" +
+            "                   Group 2                      \n" +
             "================================================\n\n" +
             "[ STORE INVENTORY ]\n" +
             "  Items tracked        : " + inventory.size() + "\n\n" +
