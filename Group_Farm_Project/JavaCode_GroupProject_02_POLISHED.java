@@ -32,7 +32,7 @@ class StoreItem {
     public double getPrice()         { return price; }
     public int    getQuantity()      { return quantity; }
     public void   setQuantity(int q) { quantity = q; }
-    public String toCSV() { return "STORE,item," + name + "," + price + "," + quantity + ",,"; }
+    public String toCSV() { return "STORE,item," + name.replace(",","") + "," + price + "," + quantity + ",,,"; }
 
     @Override
     public String toString() {
@@ -56,7 +56,7 @@ class Animal {
     public String  getSource()        { return source; }
     public void    markSold()         { sold = true; }
     public void    setSold(boolean s) { sold = s; }
-    public String  toCSV() { return "ANIMAL,animal," + type + "," + breed + "," + salePrice + "," + source + "," + sold; }
+    public String  toCSV() { return "ANIMAL,animal," + type.replace(",","") + "," + breed.replace(",","") + "," + salePrice + "," + source.replace(",","") + "," + sold + ","; }
 
     @Override
     public String toString() {
@@ -80,7 +80,7 @@ class ServiceRecord {
     public void    markPaid()         { paid = true; }
     public void    setPaid(boolean p) { paid = p; }
     public String  toCSV() {
-        return "SERVICE,record," + customerName + "," + animalType + "," + serviceType + "," + fee + "," + date + "," + paid;
+        return "SERVICE,record," + customerName.replace(",","") + "," + animalType.replace(",","") + "," + serviceType.replace(",","") + "," + fee + "," + date + "," + paid;
     }
 
     @Override
@@ -380,6 +380,10 @@ public class JavaCode_GroupProject_02_POLISHED {
         }
         inventory.clear(); animals.clear(); services.clear(); revenue = 0.0;
         try (Scanner sc = new Scanner(file)) {
+            if (!sc.hasNextLine()) {
+                FarmDialog.message("File Error", "farm_data.csv is empty.\nPlease ensure it contains valid data.");
+                return;
+            }
             sc.nextLine();
             while (sc.hasNextLine()) {
                 String line = sc.nextLine().trim();
@@ -405,7 +409,7 @@ public class JavaCode_GroupProject_02_POLISHED {
     // Written by: Aryan Kandula - Saves all current data back to farm_data.csv.
     static void saveToCSV() {
         try (PrintWriter pw = new PrintWriter(new FileWriter(CSV_FILE))) {
-            pw.println("TYPE,CATEGORY,FIELD1,FIELD2,FIELD3,FIELD4,FIELD5");
+            pw.println("TYPE,CATEGORY,FIELD1,FIELD2,FIELD3,FIELD4,FIELD5,FIELD6");
             for (StoreItem     i  : inventory) pw.println(i.toCSV());
             for (Animal        a  : animals)   pw.println(a.toCSV());
             for (ServiceRecord sr : services)  pw.println(sr.toCSV());
