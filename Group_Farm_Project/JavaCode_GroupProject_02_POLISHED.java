@@ -503,7 +503,10 @@ public class JavaCode_GroupProject_02_POLISHED {
         String qs = FarmDialog.input("Add New Item","Enter quantity:");
         if (qs == null) return;
         try {
-            inventory.add(new StoreItem(name.trim(), Double.parseDouble(ps.trim()), Integer.parseInt(qs.trim())));
+            double price = Double.parseDouble(ps.trim());
+            int quantity = Integer.parseInt(qs.trim());
+            if (price < 0 || quantity < 0) { FarmDialog.message("Error","Price and quantity must be 0 or greater."); return; }
+            inventory.add(new StoreItem(name.trim(), price, quantity));
             FarmDialog.message("Success","\"" + name.trim() + "\" added to inventory.");
         } catch (NumberFormatException e) {
             FarmDialog.message("Error","Please enter valid numbers for price and quantity.");
@@ -545,7 +548,9 @@ public class JavaCode_GroupProject_02_POLISHED {
         String qs = FarmDialog.input("Restock","Add how many units of \"" + item.getName() + "\"?");
         if (qs == null) return;
         try {
-            item.setQuantity(item.getQuantity() + Integer.parseInt(qs.trim()));
+            int amount = Integer.parseInt(qs.trim());
+            if (amount <= 0) { FarmDialog.message("Error","Restock amount must be a positive number."); return; }
+            item.setQuantity(item.getQuantity() + amount);
             FarmDialog.message("Restocked","New total for \"" + item.getName() + "\": " + item.getQuantity() + " units.");
         } catch (NumberFormatException e) {
             FarmDialog.message("Error","Please enter a valid number.");
@@ -594,7 +599,9 @@ public class JavaCode_GroupProject_02_POLISHED {
             if (source == null || source.isBlank()) source = "Local Breeder";
         }
         try {
-            animals.add(new Animal(types[ti], breed.trim(), Double.parseDouble(ps.trim()), source));
+            double price = Double.parseDouble(ps.trim());
+            if (price < 0) { FarmDialog.message("Error","Sale price must be 0 or greater."); return; }
+            animals.add(new Animal(types[ti], breed.trim(), price, source));
             FarmDialog.message("Success","Animal added successfully!");
         } catch (NumberFormatException e) {
             FarmDialog.message("Error","Please enter a valid price.");
@@ -659,8 +666,9 @@ public class JavaCode_GroupProject_02_POLISHED {
         String date = FarmDialog.input("Appointment Date","Enter date (MM/DD/YYYY):");
         if (date == null || date.isBlank()) return;
         try {
-            services.add(new ServiceRecord(customer.trim(), animalType.trim(),
-                svcTypes[si], Double.parseDouble(fs.trim()), date.trim()));
+            double fee = Double.parseDouble(fs.trim());
+            if (fee < 0) { FarmDialog.message("Error","Fee must be 0 or greater."); return; }
+            services.add(new ServiceRecord(customer.trim(), animalType.trim(), svcTypes[si], fee, date.trim()));
             FarmDialog.message("Scheduled","Service scheduled for " + customer.trim() + " on " + date.trim() + ".");
         } catch (NumberFormatException e) {
             FarmDialog.message("Error","Please enter a valid fee amount.");
