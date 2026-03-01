@@ -488,7 +488,7 @@ class FarmDialog {
 //  Main Application
 // ─────────────────────────────────────────────
 
-public class JavaCode_GroupProject_02_WORKING_KandulaAryan {
+public class JavaCode_GroupProject_02_WORKING {
 
     static final ArrayList<StoreItem>     inventory = new ArrayList<>();
     static final ArrayList<Animal>        animals   = new ArrayList<>();
