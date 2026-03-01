@@ -353,7 +353,7 @@ class FarmDialog {
     }
 }
 
-public class JavaCode_GroupProject_02_POLISHED_KandulaAryan {
+public class JavaCode_GroupProject_02_POLISHED {
 
     static final ArrayList<StoreItem>     inventory = new ArrayList<>();
     static final ArrayList<Animal>        animals   = new ArrayList<>();
