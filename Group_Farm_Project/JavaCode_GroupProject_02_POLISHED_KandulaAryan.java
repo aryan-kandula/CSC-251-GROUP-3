@@ -7,7 +7,7 @@ import java.io.*;
 import java.util.Scanner;
 
 /**
- * Farm Management System - Group 3 - Modules 2 & 3 Group Project
+ * Farm Management System - Group 2 - Modules 2 & 3 Group Project
  * Manages store inventory, animal sales, veterinary services,
  * and business reporting. All data loads from and saves to farm_data.csv.
  *
@@ -435,7 +435,7 @@ public class JavaCode_GroupProject_02_POLISHED_KandulaAryan {
         c.gridx = 0; c.gridy = GridBagConstraints.RELATIVE; c.insets = new Insets(6, 0, 6, 0);
         card.add(label("~ Farm Management ~",    new Font("Georgia", Font.ITALIC, 16), new Color(255, 240, 180)), c);
         card.add(label("Farm Management System", new Font("Georgia", Font.BOLD,   21), Color.WHITE), c);
-        card.add(label("Group 3",                new Font("Georgia", Font.ITALIC, 13), new Color(255, 240, 180)), c);
+        card.add(label("Group 2",                new Font("Georgia", Font.ITALIC, 13), new Color(255, 240, 180)), c);
         FarmButton enter = new FarmButton("  Enter Farm  ", FarmTheme.BARN_RED);
         enter.setPreferredSize(new Dimension(180, 44));
         enter.addActionListener(e -> splash.dispose());
@@ -461,7 +461,7 @@ public class JavaCode_GroupProject_02_POLISHED_KandulaAryan {
             else if (c == 3) reportsMenu();
             else if (c == 4) saveToCSV();
             else {
-                FarmDialog.message("Goodbye", "Thank you for using\nFarm Management System!\n\nHave a wonderful day!\n- Group 3");
+                FarmDialog.message("Goodbye", "Thank you for using\nFarm Management System!\n\nHave a wonderful day!\n- Group 2");
                 return;
             }
         }
@@ -684,7 +684,7 @@ public class JavaCode_GroupProject_02_POLISHED_KandulaAryan {
         FarmDialog.message("Business Report",
             "================================================\n" +
             "           FARM BUSINESS REPORT                \n" +
-            "                   Group 3                      \n" +
+            "                   Group 2                      \n" +
             "================================================\n\n" +
             "[ STORE INVENTORY ]\n" +
             "  Items tracked        : " + inventory.size() + "\n\n" +
