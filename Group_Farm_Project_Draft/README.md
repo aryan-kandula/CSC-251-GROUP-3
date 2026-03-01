@@ -1,4 +1,4 @@
-# Farm Management System — WORKING VERSION
+# Farm Management System
 ### Group 2
 ### Modules 2 & 3 Group Project | Java GUI (Custom Swing)
 
