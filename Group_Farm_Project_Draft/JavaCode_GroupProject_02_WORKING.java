@@ -545,6 +545,8 @@ public class JavaCode_GroupProject_02_WORKING {
                 } else if (p[0].equals("ANIMAL") && p.length >= 7) {
                     Animal a = new Animal(p[2], p[3], Double.parseDouble(p[4]), p[5]);
                     a.setSold(Boolean.parseBoolean(p[6].trim()));
+                    // Rebuild revenue from previously sold animals so report stays accurate after restart
+                    if (a.isSold()) revenue += a.getSalePrice();
                     animals.add(a);
 
                 } else if (p[0].equals("SERVICE") && p.length >= 8) {
@@ -558,6 +560,11 @@ public class JavaCode_GroupProject_02_WORKING {
             }
             return true;
         } catch (Exception e) {
+            // Clear any partially loaded data so seedData() starts from a clean state
+            inventory.clear();
+            animals.clear();
+            services.clear();
+            revenue = 0.0;
             FarmDialog.message("File Error", "Could not read farm_data.csv.\nLoading default data instead.");
             return false;
         }
@@ -683,7 +690,7 @@ public class JavaCode_GroupProject_02_WORKING {
         String qs = FarmDialog.input("Add New Item","Enter quantity:");
         if (qs == null) return;
         try {
-            inventory.add(new StoreItem(name.trim(), Double.parseDouble(ps), Integer.parseInt(qs)));
+            inventory.add(new StoreItem(name.trim(), Double.parseDouble(ps.trim()), Integer.parseInt(qs.trim())));
             FarmDialog.message("Success","\"" + name.trim() + "\" added to inventory.");
         } catch (NumberFormatException e) {
             FarmDialog.message("Error","Please enter valid numbers for price and quantity.");
@@ -703,7 +710,7 @@ public class JavaCode_GroupProject_02_WORKING {
         String qs = FarmDialog.input("Sell Item","Qty to sell (max " + item.getQuantity() + "):");
         if (qs == null) return;
         try {
-            int qty = Integer.parseInt(qs);
+            int qty = Integer.parseInt(qs.trim());
             if (qty <= 0 || qty > item.getQuantity()) { FarmDialog.message("Error","Invalid quantity."); return; }
             item.setQuantity(item.getQuantity() - qty);
             double sale = qty * item.getPrice();
@@ -727,7 +734,7 @@ public class JavaCode_GroupProject_02_WORKING {
         String qs = FarmDialog.input("Restock","Add how many units of \"" + item.getName() + "\"?");
         if (qs == null) return;
         try {
-            item.setQuantity(item.getQuantity() + Integer.parseInt(qs));
+            item.setQuantity(item.getQuantity() + Integer.parseInt(qs.trim()));
             FarmDialog.message("Restocked","New total for \"" + item.getName() + "\": " + item.getQuantity() + " units.");
         } catch (NumberFormatException e) {
             FarmDialog.message("Error","Please enter a valid number.");
@@ -782,7 +789,7 @@ public class JavaCode_GroupProject_02_WORKING {
             if (source == null || source.isBlank()) source = "Local Breeder";
         }
         try {
-            animals.add(new Animal(types[ti], breed.trim(), Double.parseDouble(ps), source));
+            animals.add(new Animal(types[ti], breed.trim(), Double.parseDouble(ps.trim()), source));
             FarmDialog.message("Success","Animal added successfully!");
         } catch (NumberFormatException e) {
             FarmDialog.message("Error","Please enter a valid price.");
@@ -857,7 +864,7 @@ public class JavaCode_GroupProject_02_WORKING {
         if (date == null || date.isBlank()) return;
         try {
             services.add(new ServiceRecord(customer.trim(), animalType.trim(),
-                svcTypes[si], Double.parseDouble(fs), date.trim()));
+                svcTypes[si], Double.parseDouble(fs.trim()), date.trim()));
             FarmDialog.message("Scheduled","Service scheduled for " + customer.trim() + " on " + date.trim() + ".");
         } catch (NumberFormatException e) {
             FarmDialog.message("Error","Please enter a valid fee amount.");
