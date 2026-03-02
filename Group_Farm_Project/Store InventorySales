@@ -1,0 +1,825 @@
+/*
+ * Store Inventory & Sales - 
+ * Toni Bethune
+ */
+
+import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
+import java.awt.*;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.*;
+import java.util.List;
+
+public class FarmStoreApp extends JFrame {
+
+    // --- Core managers ---
+    private final InventoryManager inventoryManager;
+    private final SalesManager salesManager;
+
+    // --- Inventory UI components ---
+    private DefaultTableModel inventoryTableModel;
+    private JTable inventoryTable;
+
+    // --- Sales UI components ---
+    private DefaultTableModel cartTableModel;
+    private JTable cartTable;
+    private JTextField skuField;
+    private JTextField qtyField;
+    private JLabel subtotalLabel;
+    private JLabel taxLabel;
+    private JLabel totalLabel;
+
+    // --- Config ---
+    private static final double TAX_RATE = 0.07;
+
+    public FarmStoreApp() {
+        super("Farm Store - Inventory & Sales");
+
+        // Load data (stubbed)
+        FileManager fm = new FileManager();
+        this.inventoryManager = new InventoryManager(fm.loadProducts());
+        this.salesManager = new SalesManager(fm);
+
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setSize(950, 600);
+        setLocationRelativeTo(null);
+
+        initUI();
+        refreshInventoryTable();
+    }
+
+    private void initUI() {
+        JTabbedPane tabs = new JTabbedPane();
+
+        tabs.addTab("Inventory", buildInventoryPanel());
+        tabs.addTab("Sales (POS)", buildSalesPanel());
+        tabs.addTab("Reports", buildReportsPanel());
+
+        setLayout(new BorderLayout());
+        add(tabs, BorderLayout.CENTER);
+    }
+
+    // =========================
+    // Inventory Tab
+    // =========================
+    private JPanel buildInventoryPanel() {
+        JPanel panel = new JPanel(new BorderLayout(10, 10));
+        panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+
+        // Table
+        inventoryTableModel = new DefaultTableModel(
+                new Object[]{"SKU", "Name", "Category", "Price", "Qty", "Active"}, 0
+        ) {
+            @Override public boolean isCellEditable(int row, int col) { return false; }
+        };
+
+        inventoryTable = new JTable(inventoryTableModel);
+        inventoryTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        panel.add(new JScrollPane(inventoryTable), BorderLayout.CENTER);
+
+        // Buttons
+        JPanel btns = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        JButton addBtn = new JButton("Add Product");
+        JButton restockBtn = new JButton("Restock");
+        JButton editPriceBtn = new JButton("Edit Price");
+        JButton deactivateBtn = new JButton("Deactivate");
+
+        addBtn.addActionListener(e -> onAddProduct());
+        restockBtn.addActionListener(e -> onRestock());
+        editPriceBtn.addActionListener(e -> onEditPrice());
+        deactivateBtn.addActionListener(e -> onDeactivate());
+
+        btns.add(addBtn);
+        btns.add(restockBtn);
+        btns.add(editPriceBtn);
+        btns.add(deactivateBtn);
+
+        panel.add(btns, BorderLayout.NORTH);
+
+        return panel;
+    }
+
+    private void onAddProduct() {
+        // Simple JOptionPane input flow (replace with custom dialog later if you want)
+        String sku = JOptionPane.showInputDialog(this, "Enter SKU:");
+        if (sku == null || sku.trim().isEmpty()) return;
+
+        if (inventoryManager.findBySku(sku.trim()) != null) {
+            JOptionPane.showMessageDialog(this, "SKU already exists.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        String name = JOptionPane.showInputDialog(this, "Enter Name:");
+        if (name == null || name.trim().isEmpty()) return;
+
+        String category = JOptionPane.showInputDialog(this, "Enter Category (Feed/Supplies/etc.):");
+        if (category == null || category.trim().isEmpty()) category = "General";
+
+        double price = promptDouble("Enter Price:");
+        if (price < 0) return;
+
+        int qty = promptInt("Enter Starting Quantity:");
+        if (qty < 0) return;
+
+        Product p = new Product(sku.trim(), name.trim(), category.trim(), price, qty, true);
+        boolean added = inventoryManager.addProduct(p);
+
+        if (!added) {
+            JOptionPane.showMessageDialog(this, "Unable to add product.", "Error", JOptionPane.ERROR_MESSAGE);
+        } else {
+            inventoryManager.save();
+            refreshInventoryTable();
+        }
+    }
+
+    private void onRestock() {
+        String sku = promptSkuFromSelectionOrInput("Restock - SKU:");
+        if (sku == null) return;
+
+        int qty = promptInt("Enter restock quantity:");
+        if (qty <= 0) {
+            JOptionPane.showMessageDialog(this, "Quantity must be > 0.");
+            return;
+        }
+
+        boolean ok = inventoryManager.restock(sku, qty);
+        if (!ok) {
+            JOptionPane.showMessageDialog(this, "SKU not found or inactive.", "Error", JOptionPane.ERROR_MESSAGE);
+        } else {
+            inventoryManager.save();
+            refreshInventoryTable();
+        }
+    }
+
+    private void onEditPrice() {
+        String sku = promptSkuFromSelectionOrInput("Edit Price - SKU:");
+        if (sku == null) return;
+
+        double newPrice = promptDouble("Enter new price:");
+        if (newPrice < 0) return;
+
+        boolean ok = inventoryManager.updatePrice(sku, newPrice);
+        if (!ok) {
+            JOptionPane.showMessageDialog(this, "SKU not found.", "Error", JOptionPane.ERROR_MESSAGE);
+        } else {
+            inventoryManager.save();
+            refreshInventoryTable();
+        }
+    }
+
+    private void onDeactivate() {
+        String sku = promptSkuFromSelectionOrInput("Deactivate - SKU:");
+        if (sku == null) return;
+
+        boolean ok = inventoryManager.deactivate(sku);
+        if (!ok) {
+            JOptionPane.showMessageDialog(this, "SKU not found.", "Error", JOptionPane.ERROR_MESSAGE);
+        } else {
+            inventoryManager.save();
+            refreshInventoryTable();
+        }
+    }
+
+    private void refreshInventoryTable() {
+        inventoryTableModel.setRowCount(0);
+        for (Product p : inventoryManager.allProducts()) {
+            inventoryTableModel.addRow(new Object[]{
+                    p.getSku(), p.getName(), p.getCategory(),
+                    String.format("%.2f", p.getPrice()),
+                    p.getQuantityOnHand(),
+                    p.isActive()
+            });
+        }
+    }
+
+    // =========================
+    // Sales Tab (POS)
+    // =========================
+    private JPanel buildSalesPanel() {
+        JPanel panel = new JPanel(new BorderLayout(10, 10));
+        panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+
+        // Top input area
+        JPanel top = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        skuField = new JTextField(12);
+        qtyField = new JTextField(5);
+        JButton addToCartBtn = new JButton("Add to Cart");
+        JButton removeBtn = new JButton("Remove Selected");
+        JButton clearBtn = new JButton("Clear Cart");
+
+        top.add(new JLabel("SKU:"));
+        top.add(skuField);
+        top.add(new JLabel("Qty:"));
+        top.add(qtyField);
+        top.add(addToCartBtn);
+        top.add(removeBtn);
+        top.add(clearBtn);
+
+        panel.add(top, BorderLayout.NORTH);
+
+        // Cart table
+        cartTableModel = new DefaultTableModel(
+                new Object[]{"SKU", "Name", "Price", "Qty", "Line Total"}, 0
+        ) {
+            @Override public boolean isCellEditable(int row, int col) { return false; }
+        };
+        cartTable = new JTable(cartTableModel);
+        cartTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+
+        panel.add(new JScrollPane(cartTable), BorderLayout.CENTER);
+
+        // Bottom totals + checkout
+        JPanel bottom = new JPanel(new BorderLayout(10, 10));
+
+        JPanel totals = new JPanel(new GridLayout(3, 2, 10, 5));
+        subtotalLabel = new JLabel("0.00");
+        taxLabel = new JLabel("0.00");
+        totalLabel = new JLabel("0.00");
+
+        totals.add(new JLabel("Subtotal:"));
+        totals.add(subtotalLabel);
+        totals.add(new JLabel("Tax:"));
+        totals.add(taxLabel);
+        totals.add(new JLabel("Total:"));
+        totals.add(totalLabel);
+
+        JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        JButton checkoutBtn = new JButton("Checkout");
+        actions.add(checkoutBtn);
+
+        bottom.add(totals, BorderLayout.WEST);
+        bottom.add(actions, BorderLayout.EAST);
+
+        panel.add(bottom, BorderLayout.SOUTH);
+
+        // Cart logic
+        ShoppingCart cart = new ShoppingCart();
+
+        addToCartBtn.addActionListener(e -> onAddToCart(cart));
+        removeBtn.addActionListener(e -> onRemoveSelectedFromCart(cart));
+        clearBtn.addActionListener(e -> onClearCart(cart));
+        checkoutBtn.addActionListener(e -> onCheckout(cart));
+
+        return panel;
+    }
+
+    private void onAddToCart(ShoppingCart cart) {
+        String sku = skuField.getText().trim();
+        if (sku.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Enter SKU.");
+            return;
+        }
+        int qty = parseIntSafe(qtyField.getText().trim());
+        if (qty <= 0) {
+            JOptionPane.showMessageDialog(this, "Enter a quantity > 0.");
+            return;
+        }
+
+        Product p = inventoryManager.findBySku(sku);
+        if (p == null || !p.isActive()) {
+            JOptionPane.showMessageDialog(this, "Product not found or inactive.");
+            return;
+        }
+        if (!p.isInStock(qty)) {
+            JOptionPane.showMessageDialog(this, "Not enough stock available.");
+            return;
+        }
+
+        cart.addItem(p, qty);
+        refreshCartTable(cart);
+        updateTotals(cart);
+
+        skuField.setText("");
+        qtyField.setText("");
+        skuField.requestFocusInWindow();
+    }
+
+    private void onRemoveSelectedFromCart(ShoppingCart cart) {
+        int row = cartTable.getSelectedRow();
+        if (row < 0) {
+            JOptionPane.showMessageDialog(this, "Select a cart item to remove.");
+            return;
+        }
+        String sku = cartTableModel.getValueAt(row, 0).toString();
+        cart.removeItem(sku);
+        refreshCartTable(cart);
+        updateTotals(cart);
+    }
+
+    private void onClearCart(ShoppingCart cart) {
+        cart.clear();
+        refreshCartTable(cart);
+        updateTotals(cart);
+    }
+
+    private void onCheckout(ShoppingCart cart) {
+        if (cart.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Cart is empty.");
+            return;
+        }
+
+        // Re-validate stock at checkout time
+        for (CartItem ci : cart.getItems()) {
+            Product p = inventoryManager.findBySku(ci.getProduct().getSku());
+            if (p == null || !p.isActive() || !p.isInStock(ci.getQuantity())) {
+                JOptionPane.showMessageDialog(this, "Checkout blocked: item unavailable: " + ci.getProduct().getSku());
+                return;
+            }
+        }
+
+        double total = cart.total(TAX_RATE);
+
+        Object[] options = {"CASH", "CARD", "Cancel"};
+        int choice = JOptionPane.showOptionDialog(
+                this,
+                String.format("Total due: $%.2f\nChoose payment method:", total),
+                "Checkout",
+                JOptionPane.DEFAULT_OPTION,
+                JOptionPane.QUESTION_MESSAGE,
+                null,
+                options,
+                options[0]
+        );
+
+        if (choice == 2 || choice == JOptionPane.CLOSED_OPTION) return;
+
+        String paymentType = options[choice].toString();
+        double amountPaid = 0.0;
+
+        if ("CASH".equals(paymentType)) {
+            amountPaid = promptDouble("Enter cash amount paid:");
+            if (amountPaid < total) {
+                JOptionPane.showMessageDialog(this, "Not enough cash.");
+                return;
+            }
+        }
+
+        // Finalize sale
+        Sale sale = salesManager.checkout(cart, inventoryManager, paymentType, amountPaid, TAX_RATE);
+        inventoryManager.save();
+
+        // Receipt display
+        JOptionPane.showMessageDialog(this, sale.toReceiptString(), "Receipt", JOptionPane.INFORMATION_MESSAGE);
+
+        // Clear UI + refresh
+        cart.clear();
+        refreshCartTable(cart);
+        updateTotals(cart);
+        refreshInventoryTable();
+    }
+
+    private void refreshCartTable(ShoppingCart cart) {
+        cartTableModel.setRowCount(0);
+        for (CartItem ci : cart.getItems()) {
+            cartTableModel.addRow(new Object[]{
+                    ci.getProduct().getSku(),
+                    ci.getProduct().getName(),
+                    String.format("%.2f", ci.getProduct().getPrice()),
+                    ci.getQuantity(),
+                    String.format("%.2f", ci.lineTotal())
+            });
+        }
+    }
+
+    private void updateTotals(ShoppingCart cart) {
+        double sub = cart.subtotal();
+        double tax = cart.tax(TAX_RATE);
+        double total = cart.total(TAX_RATE);
+
+        subtotalLabel.setText(String.format("%.2f", sub));
+        taxLabel.setText(String.format("%.2f", tax));
+        totalLabel.setText(String.format("%.2f", total));
+    }
+
+    // =========================
+    // Reports Tab
+    // =========================
+    private JPanel buildReportsPanel() {
+        JPanel panel = new JPanel(new BorderLayout(10, 10));
+        panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+
+        JTextArea output = new JTextArea();
+        output.setEditable(false);
+        output.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
+
+        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        JButton dailyTotalBtn = new JButton("Today's Total");
+        JButton lowStockBtn = new JButton("Low Stock");
+        JButton topItemsBtn = new JButton("Top Items");
+
+        buttons.add(dailyTotalBtn);
+        buttons.add(lowStockBtn);
+        buttons.add(topItemsBtn);
+
+        dailyTotalBtn.addActionListener(e -> {
+            double total = salesManager.dailyTotal(LocalDate.now());
+            output.setText(String.format("Sales total for %s: $%.2f\n", LocalDate.now(), total));
+        });
+
+        lowStockBtn.addActionListener(e -> {
+            int threshold = promptInt("Low stock threshold:");
+            if (threshold < 0) return;
+            List<Product> lows = inventoryManager.lowStock(threshold);
+
+            StringBuilder sb = new StringBuilder();
+            sb.append("Low Stock (<= ").append(threshold).append(")\n");
+            sb.append("---------------------------------\n");
+            for (Product p : lows) {
+                sb.append(String.format("%-10s %-25s Qty: %d\n", p.getSku(), p.getName(), p.getQuantityOnHand()));
+            }
+            output.setText(sb.toString());
+        });
+
+        topItemsBtn.addActionListener(e -> {
+            Map<String, Integer> top = salesManager.topSellingItems();
+            StringBuilder sb = new StringBuilder();
+            sb.append("Top Selling Items (all time)\n");
+            sb.append("---------------------------------\n");
+            top.entrySet().stream()
+                    .sorted((a, b) -> Integer.compare(b.getValue(), a.getValue()))
+                    .limit(10)
+                    .forEach(entry -> sb.append(String.format("%-10s sold: %d\n", entry.getKey(), entry.getValue())));
+            output.setText(sb.toString());
+        });
+
+        panel.add(buttons, BorderLayout.NORTH);
+        panel.add(new JScrollPane(output), BorderLayout.CENTER);
+
+        return panel;
+    }
+
+    // =========================
+    // Utility prompts/parsers
+    // =========================
+    private String promptSkuFromSelectionOrInput(String message) {
+        int row = inventoryTable.getSelectedRow();
+        if (row >= 0) {
+            return inventoryTableModel.getValueAt(row, 0).toString();
+        }
+        String sku = JOptionPane.showInputDialog(this, message);
+        if (sku == null || sku.trim().isEmpty()) return null;
+        return sku.trim();
+    }
+
+    private int promptInt(String message) {
+        String input = JOptionPane.showInputDialog(this, message);
+        if (input == null) return -1;
+        int val = parseIntSafe(input.trim());
+        if (val < 0) JOptionPane.showMessageDialog(this, "Invalid number.");
+        return val;
+    }
+
+    private double promptDouble(String message) {
+        String input = JOptionPane.showInputDialog(this, message);
+        if (input == null) return -1;
+        double val = parseDoubleSafe(input.trim());
+        if (val < 0) JOptionPane.showMessageDialog(this, "Invalid number.");
+        return val;
+    }
+
+    private int parseIntSafe(String s) {
+        try { return Integer.parseInt(s); }
+        catch (Exception e) { return -1; }
+    }
+
+    private double parseDoubleSafe(String s) {
+        try { return Double.parseDouble(s); }
+        catch (Exception e) { return -1; }
+    }
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> new FarmStoreApp().setVisible(true));
+    }
+}
+
+/* =========================
+ * Product
+ * ========================= */
+class Product {
+    private final String sku;
+    private String name;
+    private String category;
+    private double price;
+    private int quantityOnHand;
+    private boolean active;
+
+    public Product(String sku, String name, String category, double price, int quantityOnHand, boolean active) {
+        this.sku = sku;
+        this.name = name;
+        this.category = category;
+        this.price = price;
+        this.quantityOnHand = quantityOnHand;
+        this.active = active;
+    }
+
+    public boolean isInStock(int requestedQty) {
+        return active && requestedQty > 0 && quantityOnHand >= requestedQty;
+    }
+
+    public void addStock(int qty) {
+        if (qty > 0) quantityOnHand += qty;
+    }
+
+    public void reduceStock(int qty) {
+        if (qty > 0 && qty <= quantityOnHand) quantityOnHand -= qty;
+    }
+
+    public String getSku() { return sku; }
+    public String getName() { return name; }
+    public String getCategory() { return category; }
+    public double getPrice() { return price; }
+    public int getQuantityOnHand() { return quantityOnHand; }
+    public boolean isActive() { return active; }
+
+    public void setName(String name) { this.name = name; }
+    public void setCategory(String category) { this.category = category; }
+    public void setPrice(double price) { this.price = price; }
+    public void setActive(boolean active) { this.active = active; }
+}
+
+/* =========================
+ * InventoryManager
+ * ========================= */
+class InventoryManager {
+    private final Map<String, Product> productsBySku;
+    private final FileManager fileManager;
+
+    public InventoryManager(List<Product> initialProducts) {
+        this.productsBySku = new HashMap<>();
+        this.fileManager = new FileManager();
+
+        for (Product p : initialProducts) {
+            productsBySku.put(p.getSku(), p);
+        }
+    }
+
+    public boolean addProduct(Product p) {
+        if (p == null || productsBySku.containsKey(p.getSku())) return false;
+        productsBySku.put(p.getSku(), p);
+        return true;
+    }
+
+    public Product findBySku(String sku) {
+        return productsBySku.get(sku);
+    }
+
+    public boolean restock(String sku, int qty) {
+        Product p = findBySku(sku);
+        if (p == null || !p.isActive() || qty <= 0) return false;
+        p.addStock(qty);
+        return true;
+    }
+
+    public boolean updatePrice(String sku, double newPrice) {
+        Product p = findBySku(sku);
+        if (p == null || newPrice < 0) return false;
+        p.setPrice(newPrice);
+        return true;
+    }
+
+    public boolean deactivate(String sku) {
+        Product p = findBySku(sku);
+        if (p == null) return false;
+        p.setActive(false);
+        return true;
+    }
+
+    public List<Product> lowStock(int threshold) {
+        List<Product> lows = new ArrayList<>();
+        for (Product p : productsBySku.values()) {
+            if (p.isActive() && p.getQuantityOnHand() <= threshold) {
+                lows.add(p);
+            }
+        }
+        return lows;
+    }
+
+    public List<Product> allProducts() {
+        List<Product> list = new ArrayList<>(productsBySku.values());
+        list.sort(Comparator.comparing(Product::getSku));
+        return list;
+    }
+
+    public void save() {
+        fileManager.saveProducts(allProducts());
+    }
+}
+
+/* =========================
+ * CartItem
+ * ========================= */
+class CartItem {
+    private final Product product;
+    private int quantity;
+
+    public CartItem(Product product, int quantity) {
+        this.product = product;
+        this.quantity = quantity;
+    }
+
+    public double lineTotal() {
+        return product.getPrice() * quantity;
+    }
+
+    public Product getProduct() { return product; }
+    public int getQuantity() { return quantity; }
+    public void setQuantity(int quantity) { this.quantity = quantity; }
+}
+
+/* =========================
+ * ShoppingCart
+ * ========================= */
+class ShoppingCart {
+    private final List<CartItem> items = new ArrayList<>();
+
+    public void addItem(Product p, int qty) {
+        for (CartItem ci : items) {
+            if (ci.getProduct().getSku().equals(p.getSku())) {
+                ci.setQuantity(ci.getQuantity() + qty);
+                return;
+            }
+        }
+        items.add(new CartItem(p, qty));
+    }
+
+    public void removeItem(String sku) {
+        items.removeIf(ci -> ci.getProduct().getSku().equals(sku));
+    }
+
+    public double subtotal() {
+        double sum = 0;
+        for (CartItem ci : items) sum += ci.lineTotal();
+        return sum;
+    }
+
+    public double tax(double rate) {
+        return subtotal() * rate;
+    }
+
+    public double total(double rate) {
+        return subtotal() + tax(rate);
+    }
+
+    public boolean isEmpty() { return items.isEmpty(); }
+    public List<CartItem> getItems() { return items; }
+
+    public void clear() { items.clear(); }
+}
+
+/* =========================
+ * Sale
+ * ========================= */
+class Sale {
+    private final String saleId;
+    private final LocalDateTime timestamp;
+    private final List<CartItem> items;
+    private final double subtotal;
+    private final double tax;
+    private final double total;
+    private final String paymentType;
+    private final double amountPaid;
+    private final double changeDue;
+
+    public Sale(String saleId, LocalDateTime timestamp, List<CartItem> items,
+                double subtotal, double tax, double total,
+                String paymentType, double amountPaid, double changeDue) {
+        this.saleId = saleId;
+        this.timestamp = timestamp;
+        this.items = items;
+        this.subtotal = subtotal;
+        this.tax = tax;
+        this.total = total;
+        this.paymentType = paymentType;
+        this.amountPaid = amountPaid;
+        this.changeDue = changeDue;
+    }
+
+    public LocalDate getDate() { return timestamp.toLocalDate(); }
+    public double getTotal() { return total; }
+    public List<CartItem> getItems() { return items; }
+
+    public String toReceiptString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("SALE ").append(saleId).append("\n");
+        sb.append("Time: ").append(timestamp).append("\n");
+        sb.append("---------------------------------\n");
+        for (CartItem ci : items) {
+            sb.append(String.format("%s x%d  $%.2f\n",
+                    ci.getProduct().getName(),
+                    ci.getQuantity(),
+                    ci.lineTotal()));
+        }
+        sb.append("---------------------------------\n");
+        sb.append(String.format("Subtotal: $%.2f\n", subtotal));
+        sb.append(String.format("Tax:      $%.2f\n", tax));
+        sb.append(String.format("Total:    $%.2f\n", total));
+        sb.append("Payment:  ").append(paymentType).append("\n");
+        if ("CASH".equals(paymentType)) {
+            sb.append(String.format("Paid:     $%.2f\n", amountPaid));
+            sb.append(String.format("Change:   $%.2f\n", changeDue));
+        }
+        return sb.toString();
+    }
+}
+
+/* =========================
+ * SalesManager
+ * ========================= */
+class SalesManager {
+    private final List<Sale> salesHistory = new ArrayList<>();
+    private final FileManager fileManager;
+
+    public SalesManager(FileManager fileManager) {
+        this.fileManager = fileManager;
+        // Optional: load sales history from file
+        // salesHistory.addAll(fileManager.loadSales());
+    }
+
+    public Sale checkout(ShoppingCart cart, InventoryManager inv,
+                         String paymentType, double amountPaid, double taxRate) {
+
+        // Compute totals
+        double subtotal = cart.subtotal();
+        double tax = cart.tax(taxRate);
+        double total = cart.total(taxRate);
+
+        double changeDue = 0.0;
+        if ("CASH".equals(paymentType)) {
+            changeDue = amountPaid - total;
+        }
+
+        // Reduce inventory
+        for (CartItem ci : cart.getItems()) {
+            Product p = inv.findBySku(ci.getProduct().getSku());
+            if (p != null) p.reduceStock(ci.getQuantity());
+        }
+
+        // Create sale record (copy cart items so receipt doesn't change later)
+        List<CartItem> itemsCopy = new ArrayList<>();
+        for (CartItem ci : cart.getItems()) {
+            itemsCopy.add(new CartItem(ci.getProduct(), ci.getQuantity()));
+        }
+
+        Sale sale = new Sale(
+                UUID.randomUUID().toString().substring(0, 8).toUpperCase(),
+                LocalDateTime.now(),
+                itemsCopy,
+                subtotal, tax, total,
+                paymentType, amountPaid, changeDue
+        );
+
+        salesHistory.add(sale);
+        fileManager.appendSale(sale);
+
+        return sale;
+    }
+
+    public double dailyTotal(LocalDate date) {
+        double sum = 0;
+        for (Sale s : salesHistory) {
+            if (s.getDate().equals(date)) sum += s.getTotal();
+        }
+        return sum;
+    }
+
+    public Map<String, Integer> topSellingItems() {
+        Map<String, Integer> counts = new HashMap<>();
+        for (Sale s : salesHistory) {
+            for (CartItem ci : s.getItems()) {
+                String sku = ci.getProduct().getSku();
+                counts.put(sku, counts.getOrDefault(sku, 0) + ci.getQuantity());
+            }
+        }
+        return counts;
+    }
+}
+
+/* =========================
+ * FileManager (CSV stubs)
+ * ========================= */
+class FileManager {
+
+    // TODO: implement real CSV parsing/writing
+    // For now, returns a starter list so the UI has something to show.
+    public List<Product> loadProducts() {
+        List<Product> starter = new ArrayList<>();
+        starter.add(new Product("FEED-001", "Chicken Feed (50lb)", "Feed", 19.99, 12, true));
+        starter.add(new Product("BARN-010", "Bedding Straw Bale", "Supplies", 8.49, 20, true));
+        starter.add(new Product("PET-205", "Rabbit Water Bottle", "Supplies", 6.99, 7, true));
+        return starter;
+    }
+
+    public void saveProducts(List<Product> products) {
+        // TODO: write products to products.csv
+        // Example columns: sku,name,category,price,qty,active
+    }
+
+    public void appendSale(Sale sale) {
+        // TODO: append sale summary to sales.csv
+        // Optional: also append sale line-items to sale_items.csv
+    }
+
+    // Optional:
+    // public List<Sale> loadSales() { return new ArrayList<>(); }
+}
